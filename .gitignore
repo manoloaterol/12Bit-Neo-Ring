@@ -1,0 +1,5 @@
+.DS_Store
+src/.stmignore
+src/.vscode/
+src/STM32Make.make
+src/build/
