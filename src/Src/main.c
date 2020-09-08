@@ -737,11 +737,10 @@ void brightnessSetup(void)
 
 /**
  * Transform brightness lever (1 - 12) 
- * to brightness value (21 - )   
+ * to brightness value (21 - 255)   
  */
 uint8_t getRawBrightness(void)
 {
-  // uint8_t raw = round(255 / 12) * brightness;
   uint8_t raw = round((brightness * 255) / 12);
   return raw;
 }
