@@ -62,10 +62,10 @@ DMA_HandleTypeDef hdma_tim3_ch1_trig;
 
 /* USER CODE BEGIN PV */
 
-uint8_t brightnessMode = 0;
-uint8_t brightness = 1;
-uint8_t mode = 0;      // visualization mode
-uint32_t lastTick = 0; // used to avoid button bounce effect
+uint8_t brightnessMode = 0; // 1 = brightness configuration mode
+uint8_t brightness = 12;    // Brightness level (1 - 12)
+uint8_t mode = 0;           // visualization mode
+uint32_t lastTick = 0;      // used to avoid button bounce effect
 
 // Max ADC value
 uint16_t max_value = 2047 * RAIL_APERTURE;
@@ -144,72 +144,72 @@ int main(void)
   MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
 
-    // Issuing the TIM_TimeBaseInit() function caused the TIM_SR_UIF flag to become set. Clear it.
-    __HAL_TIM_CLEAR_FLAG(&htim14, TIM_SR_UIF);
+  // Issuing the TIM_TimeBaseInit() function caused the TIM_SR_UIF flag to become set. Clear it.
+  __HAL_TIM_CLEAR_FLAG(&htim14, TIM_SR_UIF);
 
-    volatile uint16_t rawValues[SAMPLES]; // Values from ADC
+  volatile uint16_t rawValues[SAMPLES]; // Values from ADC
 
-    // Clear leds
-    ws2812_init(&htim3);
-    ws2812_fillBlack();
-    ws2812_update();
+  // Clear leds
+  ws2812_init(&htim3);
+  ws2812_fillBlack();
+  ws2812_update();
 
-    /* Uncomment to Test current consumption */
-    // setWHOLEcolor(255, 255, 255);
-    // ws2812_update();
-    // HAL_Delay(6000);
-    /******/
+  /* Uncomment to Test current consumption */
+  // setWHOLEcolor(255, 255, 255);
+  // ws2812_update();
+  // HAL_Delay(6000);
+  /******/
 
-    // Start ADC conversion in DMA mode.
-    // DMA is configured in circular mode with continuous requests
-    HAL_ADC_Start_DMA(&hadc, (uint32_t *)rawValues, SAMPLES);
+  // Start ADC conversion in DMA mode.
+  // DMA is configured in circular mode with continuous requests
+  HAL_ADC_Start_DMA(&hadc, (uint32_t *)rawValues, SAMPLES);
 
-    // Delay duration
-    uint8_t delay = 10;
+  // Delay duration
+  uint8_t delay = 10;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-    while (1)
+  while (1)
+  {
+    if (brightnessMode == 1)
     {
-        if (brightnessMode == 1)
-        {
-            brightnessSetup();
-        }
-        else
-        {
-            // calculate ADC value average from specified samples
-            volatile uint16_t average = rawValues[0];
-            for (uint8_t i = 1; i < SAMPLES; i++)
-            {
-                average = (average + rawValues[i]);
-            }
-            average /= SAMPLES;
+      brightnessSetup();
+    }
+    else
+    {
+      // calculate ADC value average from specified samples
+      volatile uint16_t average = rawValues[0];
+      for (uint8_t i = 1; i < SAMPLES; i++)
+      {
+        average = (average + rawValues[i]);
+      }
+      average /= SAMPLES;
 
-            // Execute visualization mode
-            switch (mode)
-            {
-            case 0:
-                mode_0(average);
-                break;
-            case 1:
-                mode_1(average);
-                break;
-            case 2:
-                mode_2(average);
-                break;
-            default:
-                break;
-            }
-        }
+      // Execute visualization mode
+      switch (mode)
+      {
+      case 0:
+        mode_0(average);
+        break;
+      case 1:
+        mode_1(average);
+        break;
+      case 2:
+        mode_2(average);
+        break;
+      default:
+        break;
+      }
+    }
 
-        HAL_Delay(delay);
+    HAL_Delay(delay);
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    }
+  }
   /* USER CODE END 3 */
 }
 
@@ -226,7 +226,7 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSI14;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_HSI14;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSI14State = RCC_HSI14_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -241,8 +241,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -308,7 +307,6 @@ static void MX_ADC_Init(void)
   /* USER CODE BEGIN ADC_Init 2 */
 
   /* USER CODE END ADC_Init 2 */
-
 }
 
 /**
@@ -354,7 +352,6 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
@@ -403,7 +400,6 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
-
 }
 
 /**
@@ -434,7 +430,6 @@ static void MX_TIM14_Init(void)
   /* USER CODE BEGIN TIM14_Init 2 */
 
   /* USER CODE END TIM14_Init 2 */
-
 }
 
 /**
@@ -453,7 +448,6 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel4_5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_5_IRQn);
-
 }
 
 /**
@@ -477,7 +471,6 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
-
 }
 
 /* USER CODE BEGIN 4 */
@@ -487,48 +480,63 @@ static void MX_GPIO_Init(void)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if (GPIO_Pin == GPIO_PIN_7)
+  if (GPIO_Pin == GPIO_PIN_7)
+  {
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7) == GPIO_PIN_SET) // Button released
     {
-      if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7) == GPIO_PIN_SET) {
-        /* Button released */
+      if (brightnessMode == 0)
+      {
         HAL_TIM_Base_Stop_IT(&htim14);
         __HAL_TIM_SET_COUNTER(&htim14, 0);
-        lastTick = HAL_GetTick();
-      
-      } else {
-        /* Button pressed */
-
-        // Check clock ticks between interrupts
-        // to avoid bounce effect
-        uint32_t tick = HAL_GetTick();
-        uint32_t diff = tick - lastTick;
-        if (diff > 200)
-        {
-            HAL_TIM_Base_Start_IT(&htim14);
-            if(brightnessMode == 1) {
-              brightness = (brightness == 12) ? 1 : brightness + 1;
-            } else {
-            ws2812_fillBlack();
-            mode++;
-            if (mode > 2)
-            {
-                mode = 0;
-            }
-            }
-        }
-
-        lastTick = tick;
       }
+      lastTick = HAL_GetTick();
 
     }
+    else // Button pressed
+    {
+
+      // Check clock ticks between interrupts
+      // to avoid bounce effect
+      uint32_t tick = HAL_GetTick();
+      uint32_t diff = tick - lastTick;
+      if (diff > 200)
+      {
+
+        if (brightnessMode == 1)
+        {
+          // Increment brightness
+          __HAL_TIM_SET_COUNTER(&htim14, 0);
+          brightness = (brightness == 12) ? 1 : brightness + 1;
+        }
+        else
+        {
+          HAL_TIM_Base_Start_IT(&htim14);
+          ws2812_fillBlack();
+          mode++;
+          if (mode > 2)
+          {
+            mode = 0;
+          }
+        }
+      }
+
+      lastTick = tick;
+    }
+  }
 }
 
+/**
+ * Timer Interrupt callback 
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+  if (brightnessMode == 1)
+  {
     HAL_TIM_Base_Stop_IT(&htim14);
-     __HAL_TIM_SET_COUNTER(&htim14, 0);
-    // __HAL_TIM_CLEAR_FLAG(&htim14, TIM_SR_UIF);
-    brightnessMode = (brightnessMode == 1) ? 0 : 1;
+    __HAL_TIM_SET_COUNTER(&htim14, 0);
+  }
+
+  brightnessMode = (brightnessMode == 1) ? 0 : 1;
 }
 
 /**
@@ -536,13 +544,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  */
 void addLastValue(uint16_t value)
 {
-    lastValues[lastValueCount] = value;
-    lastValueCount++;
+  lastValues[lastValueCount] = value;
+  lastValueCount++;
 
-    if (lastValueCount >= AVERAGE_SAMPLES)
-    {
-        lastValueCount = 0;
-    }
+  if (lastValueCount >= AVERAGE_SAMPLES)
+  {
+    lastValueCount = 0;
+  }
 }
 
 /**
@@ -550,13 +558,13 @@ void addLastValue(uint16_t value)
  */
 uint16_t getAverage()
 {
-    uint16_t average = 0;
-    for (uint8_t i = 0; i < AVERAGE_SAMPLES; i++)
-    {
-        average += lastValues[i];
-    }
+  uint16_t average = 0;
+  for (uint8_t i = 0; i < AVERAGE_SAMPLES; i++)
+  {
+    average += lastValues[i];
+  }
 
-    return abs(average / AVERAGE_SAMPLES);
+  return abs(average / AVERAGE_SAMPLES);
 }
 
 /**
@@ -564,49 +572,49 @@ uint16_t getAverage()
  */
 void mode_0(uint16_t value)
 {
-    // Difference between the average value and center position
-    // of the op-amp signal. ADC computes in 12bit(4096), so
-    // center position hava a value of 4095/2 ~= 2047
-    uint16_t tempValue = abs(2047 - value);
+  // Difference between the average value and center position
+  // of the op-amp signal. ADC computes in 12bit(4096), so
+  // center position hava a value of 4095/2 ~= 2047
+  uint16_t tempValue = abs(2047 - value);
 
-    // Uncomment to set equivalent brightness from value
-    // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-    uint8_t brightness = getRawBrightness();
+  // Uncomment to set equivalent brightness from value
+  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+  uint8_t brightness = getRawBrightness();
 
-    // LED position that corresponds to the value
-    uint8_t position = abs((tempValue * LED_COUNT) / max_value);
+  // LED position that corresponds to the value
+  uint8_t position = abs((tempValue * LED_COUNT) / max_value);
 
-    // Check difference from last value to change the Hue
-    int diff = value - getAverage();
-    if (diff > 1)
+  // Check difference from last value to change the Hue
+  int diff = value - getAverage();
+  if (diff > 1)
+  {
+    if (globalHue < 235)
     {
-        if (globalHue < 235)
-        {
-            globalHue += 2;
-        }
+      globalHue += 2;
     }
-    else if (diff < -1)
+  }
+  else if (diff < -1)
+  {
+    if (globalHue > 3)
     {
-        if (globalHue > 3)
-        {
-            globalHue -= 2;
-        }
+      globalHue -= 2;
     }
-    addLastValue(value);
+  }
+  addLastValue(value);
 
-    // Apply LED values and display data
-    for (uint8_t i = 0; i < LED_COUNT; i++)
+  // Apply LED values and display data
+  for (uint8_t i = 0; i < LED_COUNT; i++)
+  {
+    if (i < position)
     {
-        if (i < position)
-        {
-            ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
-        }
-        else
-        {
-            ws2812_setLEDfade(i, 1.2);
-        }
+      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
     }
-    ws2812_update();
+    else
+    {
+      ws2812_setLEDfade(i, 1.2);
+    }
+  }
+  ws2812_update();
 }
 
 /**
@@ -614,45 +622,45 @@ void mode_0(uint16_t value)
  */
 void mode_1(uint16_t value)
 {
-    uint16_t tempValue = abs(2047 - value);
-    // Uncomment to set equivalent brightness from value
-    // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-    uint8_t brightness = getRawBrightness();
-    uint8_t position = abs((tempValue * 4) / max_value);
+  uint16_t tempValue = abs(2047 - value);
+  // Uncomment to set equivalent brightness from value
+  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+  uint8_t brightness = getRawBrightness();
+  uint8_t position = abs((tempValue * 4) / max_value);
 
-    int diff = value - getAverage();
-    if (diff > 1)
+  int diff = value - getAverage();
+  if (diff > 1)
+  {
+    if (globalHue < 235)
     {
-        if (globalHue < 235)
-        {
-            globalHue += 2;
-        }
+      globalHue += 2;
     }
-    else if (diff < -1)
+  }
+  else if (diff < -1)
+  {
+    if (globalHue > 5)
     {
-        if (globalHue > 5)
-        {
-            globalHue -= 2;
-        }
+      globalHue -= 2;
     }
-    addLastValue(value);
+  }
+  addLastValue(value);
 
-    for (uint8_t i = 0; i < 4; i++)
+  for (uint8_t i = 0; i < 4; i++)
+  {
+    if (i < position)
     {
-        if (i < position)
-        {
-            ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
-        }
-        else
-        {
-            ws2812_setLEDfade(i, 1.2);
-        }
+      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
     }
+    else
+    {
+      ws2812_setLEDfade(i, 1.2);
+    }
+  }
 
-    // mirror
-    ws2812_mirrorFirstQuarter();
+  // mirror
+  ws2812_mirrorFirstQuarter();
 
-    ws2812_update();
+  ws2812_update();
 }
 
 /**
@@ -660,74 +668,82 @@ void mode_1(uint16_t value)
  */
 void mode_2(uint16_t value)
 {
-    uint16_t tempValue = abs(2047 - value);
-    // Uncomment to set equivalent brightness from value
-    // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-    uint8_t brightness = getRawBrightness();
-    uint8_t position = abs((tempValue * 4) / max_value);
+  uint16_t tempValue = abs(2047 - value);
+  // Uncomment to set equivalent brightness from value
+  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+  uint8_t brightness = getRawBrightness();
+  uint8_t position = abs((tempValue * 4) / max_value);
 
-    int diff = value - getAverage();
-    if (diff > 1)
+  int diff = value - getAverage();
+  if (diff > 1)
+  {
+    if (globalHue < 235)
     {
-        if (globalHue < 235)
-        {
-            globalHue += 2;
-        }
+      globalHue += 2;
     }
-    else if (diff < -1)
+  }
+  else if (diff < -1)
+  {
+    if (globalHue > 5)
     {
-        if (globalHue > 5)
-        {
-            globalHue -= 2;
-        }
+      globalHue -= 2;
     }
-    addLastValue(value);
+  }
+  addLastValue(value);
 
-    for (uint8_t i = 0; i < 4; i++)
+  for (uint8_t i = 0; i < 4; i++)
+  {
+    if (i < position)
     {
-        if (i < position)
-        {
-            ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
-        }
-        else
-        {
-            ws2812_setLEDfade(i, 1.2);
-        }
+      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness);
     }
-
-    // mirror
-    ws2812_mirrorFirstQuarter();
-
-    if (rotation_count == rotation_delay)
+    else
     {
-        rotation_count = 0;
-        rotation_step++;
-        if (rotation_step >= LED_COUNT)
-        {
-            rotation_step = 0;
-        }
+      ws2812_setLEDfade(i, 1.2);
     }
-    rotation_count++;
+  }
 
-    ws2812_shift(rotation_step);
+  // mirror
+  ws2812_mirrorFirstQuarter();
+
+  if (rotation_count == rotation_delay)
+  {
+    rotation_count = 0;
+    rotation_step++;
+    if (rotation_step >= LED_COUNT)
+    {
+      rotation_step = 0;
+    }
+  }
+  rotation_count++;
+
+  ws2812_shift(rotation_step);
 }
 
+/**
+ * Brightness configuration mode 
+ */
 void brightnessSetup(void)
 {
-    ws2812_fillBlack();
-    uint8_t rawBrightness = getRawBrightness();
-    for (uint8_t i = 0; i < brightness; i++)
-    {
-        
-        ws2812_setLEDcolor(i, rawBrightness, rawBrightness, rawBrightness);
-        ws2812_update();
-    }
+  ws2812_fillBlack();
+  uint8_t rawBrightness = getRawBrightness();
+  for (uint8_t i = 0; i < brightness; i++)
+  {
+
+    ws2812_setLEDcolor(i, rawBrightness, rawBrightness, rawBrightness);
+    ws2812_update();
+  }
 }
 
+/**
+ * Transform brightness lever (1 - 12) 
+ * to brightness value (21 - )   
+ */
 uint8_t getRawBrightness(void)
 {
-    uint8_t raw = round(255 / 12) * brightness;
-    return raw;
+  // uint8_t raw = round(255 / 12) * brightness;
+  uint8_t raw = round((brightness * 255) / 12);
+  return raw;
 }
 
 /* USER CODE END 4 */
@@ -739,12 +755,12 @@ uint8_t getRawBrightness(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
+  /* User can add his own implementation to report the HAL error return state */
 
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -755,7 +771,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-    /* User can add his own implementation to report the file name and line number,
+  /* User can add his own implementation to report the file name and line number,
        tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
