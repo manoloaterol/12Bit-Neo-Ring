@@ -8,6 +8,8 @@
 
 Here you can find the board schematic and sample code installed by default on the board. You can see the results in [this video][video link].
 
+<a href="https://www.tindie.com/stores/manuat/?ref=offsite_badges&utm_source=sellers_manuAT&utm_medium=badges&utm_campaign=badge_medium"><img src="https://d2ss6ovg47m0r5.cloudfront.net/badges/tindie-mediums.png" alt="I sell on Tindie" width="150" height="78"></a>
+
 ## IDE Environment
 The sorce code is generated from [STM32CubeMX][cubeMX link] as a Makefile project, so it can be compiled from command line or using VSCode with the [STM32 VSCode][vscode link] extension. 
 
