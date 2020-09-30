@@ -1,7 +1,7 @@
 # 12Bit Neo-Ring
 
 <p align="center"> 
-<img src="docs/images/12Bit_Neo-Ring_2.jpeg" width=450>
+<img src="docs/images/12Bit_Neo-Ring_2v2.jpeg" width=500>
 </p>
 
 12Bit Neo-Ring is a programmable sound reactive board with 12 full-color Neopixel leds, specially designed to be used as a wearable device or a gadget for other audio systems.
