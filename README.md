@@ -24,6 +24,8 @@ This sample code uses three different peripherals from the micro: ADC, TIMER and
 The sound is sampled by the analog-to-digital converter (ADC) with a resolution of 12bits in continuous mode. DMA is used in circular mode to save values from ADC to the memory, so no CPU computation is used for this task.
 Led communication is done with a Timer configured to work at 800KHz. Again, DMA is used to send data to the timer channel as a PWM signal, so the CPU is unloaded as much as possible during all the process.
 
+## Button functionality
+
 ### Effect selection
 Push button to switch between available effects:
 
