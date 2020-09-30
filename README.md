@@ -11,7 +11,7 @@ Here you can find the board schematic and sample code installed by default on th
 ## IDE Environment
 The sorce code is generated from [STM32CubeMX][cubeMX link] as a Makefile project, so it can be compiled from command line or using VSCode with the [STM32 VSCode][vscode link] extension. 
 
-For a different IDE, you can open the .ioc file with STM32CubeMX, change the Toolckain / IDE selection from the Project Manager tab and generate the new project structure. In this scenario is better to copy the .ioc file to a new folder before generating the project.
+For a different IDE, you can open the .ioc file with STM32CubeMX, change the Toolchain / IDE selection from the Project Manager tab and generate the new project structure. In this scenario is better to copy the .ioc file to a new folder before generating the project.
 
 
 ## How sample works
@@ -21,6 +21,27 @@ For a different IDE, you can open the .ioc file with STM32CubeMX, change the Too
 This sample code uses three different peripherals from the micro: ADC, TIMER and DMA. 
 The sound is sampled by the analog-to-digital converter (ADC) with a resolution of 12bits in continuous mode. DMA is used in circular mode to save values from ADC to the memory, so no CPU computation is used for this task.
 Led communication is done with a Timer configured to work at 800KHz. Again, DMA is used to send data to the timer channel as a PWM signal, so the CPU is unloaded as much as possible during all the process.
+
+### Effect selection
+Push button to switch between available effects:
+
+#### Sound pressure Gauge
+<img src="docs/images/mode_1_dark.gif" width=450>
+
+#### Half ring centered and mirrored
+<img src="docs/images/mode_2_dark.gif" width=450>
+
+#### Half ring mirrored with rotation
+<img src="docs/images/mode_3_dark.gif" width=450>
+
+### Change brightness
+By default brightness is configured with maximum value. To change this value press and hold button for 3 seconds. Now you can press again to set the desired value.
+
+Wait for another three seconds without pressing the button to exit the setup with the new value applied.
+
+<p align="center"> 
+<img src="docs/images/Adjust_brightness.gif" width=450>
+</p>
 
 
 
