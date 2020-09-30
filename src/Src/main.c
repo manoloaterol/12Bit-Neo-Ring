@@ -41,7 +41,7 @@
 // OP-AMP rail aperture.
 // Values from 0.1 to 1
 // Less values, more sesitivity
-#define RAIL_APERTURE 0.7
+#define RAIL_APERTURE 1
 
 /* USER CODE END PD */
 
