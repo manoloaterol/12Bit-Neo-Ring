@@ -15,7 +15,7 @@ The sorce code is generated from [STM32CubeMX][cubeMX link] as a Makefile projec
 
 For a different IDE, you can open the .ioc file with STM32CubeMX, change the Toolchain / IDE selection from the Project Manager tab and generate the new project structure. In this scenario is better to copy the .ioc file to a new folder before generating the project.
 
-You can also use [this repo][cubeide repo] for a VSCode version.
+You can also use [this repo][cubeide repo] for a STM32CubeIDE version.
 
 
 ## How sample works
