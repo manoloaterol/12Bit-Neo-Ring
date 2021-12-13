@@ -1,0 +1,1 @@
+int fix_fft(short fr[], short fi[], short m, short inverse);
