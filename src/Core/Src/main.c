@@ -36,24 +36,22 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define DISPLAY_ON
 
-#define MAX_BRIGHTNESS 255 // Max led brightness
-// #define SAMPLES 20         // ADC samples
-#define AVERAGE_SAMPLES 5  // Number of saples to compute the average
+
+#define MAX_BRIGHTNESS 255 		// Max led brightness
+#define AVERAGE_SAMPLES 10  	// Number of samples to compute the average
+#define DIFFERENCE_GAMMA 450	// ADC difference to increase hue
+#define HUE_INCREMENT 1			// Hue increment
 
 // OP-AMP rail aperture.
 // Values from 0.1 to 1
-// Less values, more sesitivity
+// Less values, more sensitivity
 #define RAIL_APERTURE 1
 
 //Amount of samples to obtain
 #define Len 64
 #define Log2Len 6
 
-// FFT Display properties
-#define DISPLAY_WIDTH 128   // number of leds
-#define DISPLAY_HEIGHT 64 // max brightness
 
 /* USER CODE END PD */
 
@@ -74,6 +72,7 @@ TIM_HandleTypeDef htim16;
 DMA_HandleTypeDef hdma_tim3_ch1_trig;
 
 /* USER CODE BEGIN PV */
+
 uint8_t brightnessMode = 0; // 1 = brightness configuration mode
 uint8_t brightness = 12;    // Brightness level (1 - 12)
 uint8_t mode = 0;           // visualization mode
@@ -98,6 +97,7 @@ uint8_t rotation_step = 0;
 volatile uint16_t adc_value = 0;
 volatile uint16_t n_count = 0;
 volatile uint8_t n_done = 0;
+
 //Sample storage array
 int16_t lastSample = 0; // Used on modes that did not require fft
 int16_t Samples[Len] = {0};
@@ -116,6 +116,7 @@ static void MX_I2C1_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
+
 void addLastValue(uint16_t value);
 uint16_t getAverage();
 
@@ -123,12 +124,13 @@ void mode_0(uint16_t value);
 void mode_1(uint16_t value);
 void mode_2(uint16_t value);
 void mode_3(uint16_t value);
-void mode_4_old(void);
 void mode_4(void);
+
 void brightnessSetup(void);
 uint8_t getRawBrightness(void);
 
 uint16_t isqrt(uint32_t x);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -172,36 +174,30 @@ int main(void)
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_Delay(300);
-  SSD1306_Init();
-   HAL_Delay(300);
-   SSD1306_Fill(0);
 
-   // Issuing the TIM_TimeBaseInit() function caused the TIM_SR_UIF flag to become set. Clear it.
-   __HAL_TIM_CLEAR_FLAG(&htim14, TIM_SR_UIF);
 
-   // volatile uint16_t rawValues[SAMPLES]; // Values from ADC
+  // Issuing the TIM_TimeBaseInit() function caused the TIM_SR_UIF flag to become set. Clear it.
+  __HAL_TIM_CLEAR_FLAG(&htim14, TIM_SR_UIF);
 
-   // Clear leds
-   ws2812_init(&htim3);
-   ws2812_fillBlack();
-   ws2812_update();
 
-   /* Uncomment to Test current consumption */
-//    ws2812_setWHOLEcolor(255, 255, 255);
-//    ws2812_update();
-//    HAL_Delay(6000);
-   /******/
+  // Clear leds
+  ws2812_init(&htim3);
+  ws2812_fillBlack();
+  ws2812_update();
 
-   // Start ADC conversion in DMA mode.
-   // DMA is configured in circular mode with continuous requests
-   // HAL_ADC_Start_DMA(&hadc, (uint32_t *)rawValues, SAMPLES);
-   // Start ADC
-   HAL_TIM_Base_Start_IT(&htim16);
-   HAL_ADC_Start(&hadc);
+  /* Uncomment to Test current consumption */
+  //    ws2812_setWHOLEcolor(255, 255, 255);
+  //    ws2812_update();
+  //    HAL_Delay(6000);
+  /******/
 
-   // Delay duration
-   uint8_t delay = 10;
+  // Start ADC conversion
+  // ADC is triggered from Timer16 at 4KHz sampling rate
+  HAL_TIM_Base_Start_IT(&htim16);
+  HAL_ADC_Start(&hadc);
+
+  // Delay duration
+  uint8_t delay = 10;
 
   /* USER CODE END 2 */
 
@@ -210,56 +206,41 @@ int main(void)
   while (1)
   {
 	  if (brightnessMode == 1)
-	      {
-	        brightnessSetup();
-	      }
-	      else
-	      {
+	  {
+		  brightnessSetup();
+	  }
+	  else
+	  {
 
+		  // Execute visualization mode
+		  switch (mode)
+		  {
+		  case 0:
+			  mode_0(lastSample);
+			  break;
+		  case 1:
+			  mode_1(lastSample);
+			  break;
+		  case 2:
+			  mode_2(lastSample);
+			  break;
+		  case 3:
+			  mode_3(lastSample);
+			  break;
+		  case 4:
+			  while (!n_done) {};
+			  HAL_TIM_Base_Stop_IT(&htim16);
+			  n_done = 0;
+			  mode_4();
+			  HAL_TIM_Base_Start_IT(&htim16);
+			  break;
+		  default:
+			  break;
+		  }
 
+	  }
 
-	        // fix_fft(Samples, Imag, Log2Len, 0);
-	        // calc_magnitude_and_display();
-
-
-	        // Execute visualization mode
-	        switch (mode)
-	        {
-	        case 0:
-	        	mode_0(lastSample);
-	        	break;
-	        case 1:
-	        	mode_1(lastSample);
-	        	break;
-	        case 2:
-	        	mode_2(lastSample);
-	        	break;
-	        case 3:
-	        	mode_3(lastSample);
-	        	break;
-	        case 4:
-	        	while (!n_done) {};
-	        	 HAL_TIM_Base_Stop_IT(&htim16);
-	        	 n_done = 0;
-	        	mode_4();
-	        	HAL_TIM_Base_Start_IT(&htim16);
-	        	break;
-	        default:
-	        	break;
-	        }
-
-
-
-	        // // calculate ADC value average from specified samples
-	        // volatile uint16_t average = rawValues[0];
-	        // for (uint8_t i = 1; i < SAMPLES; i++)
-	        // {
-	        //   average = (average + rawValues[i]);
-	        // }
-	        // average /= SAMPLES;
-	      }
-
-	      HAL_Delay(delay);
+	  HAL_Delay(delay);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -567,6 +548,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 /**
  * Interrupt callback
  */
@@ -625,37 +607,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim == &htim14)
-  {
-    if (brightnessMode == 1)
-    {
-      HAL_TIM_Base_Stop_IT(&htim14);
-      __HAL_TIM_SET_COUNTER(&htim14, 0);
-    }
+	if (htim == &htim14) // Exit brightness configuration mode
+	{
+		if (brightnessMode == 1)
+		{
+			HAL_TIM_Base_Stop_IT(&htim14);
+			__HAL_TIM_SET_COUNTER(&htim14, 0);
+		}
 
-    brightnessMode = (brightnessMode == 1) ? 0 : 1;
-  }
-  else if (htim == &htim16)
-  {
-    // Read ADC value
-    HAL_ADC_Start(&hadc);
-    if (HAL_ADC_PollForConversion(&hadc, 10) == HAL_OK)
-    {
-      adc_value = HAL_ADC_GetValue(&hadc);
-      lastSample = adc_value;
+		brightnessMode = (brightnessMode == 1) ? 0 : 1;
+	}
+	else if (htim == &htim16)
+	{
+		// Read ADC value
+		HAL_ADC_Start(&hadc);
+		if (HAL_ADC_PollForConversion(&hadc, 10) == HAL_OK)
+		{
+			adc_value = HAL_ADC_GetValue(&hadc);
+			lastSample = adc_value;
 
-      if (n_done == 0)
-      {
-        Samples[n_count++] = adc_value;
+			if (n_done == 0)
+			{
+				Samples[n_count++] = adc_value;
 
-        if (n_count >= Len)
-        {
-          n_done = 1;
-          n_count = 0;
-        }
-      }
-    }
-  }
+				if (n_count >= Len)
+				{
+					n_done = 1;
+					n_count = 0;
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -663,13 +645,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  */
 void addLastValue(uint16_t value)
 {
-  lastValues[lastValueCount] = value;
-  lastValueCount++;
+	lastValues[lastValueCount] = value;
+	lastValueCount++;
 
-  if (lastValueCount >= AVERAGE_SAMPLES)
-  {
-    lastValueCount = 0;
-  }
+	if (lastValueCount >= AVERAGE_SAMPLES)
+	{
+		lastValueCount = 0;
+	}
 }
 
 /**
@@ -677,13 +659,13 @@ void addLastValue(uint16_t value)
  */
 uint16_t getAverage()
 {
-  uint16_t average = 0;
-  for (uint8_t i = 0; i < AVERAGE_SAMPLES; i++)
-  {
-    average += lastValues[i];
-  }
+	uint16_t average = 0;
+	for (uint8_t i = 0; i < AVERAGE_SAMPLES; i++)
+	{
+		average += lastValues[i];
+	}
 
-  return abs(average / AVERAGE_SAMPLES);
+	return abs(average / AVERAGE_SAMPLES);
 }
 
 /**
@@ -691,335 +673,191 @@ uint16_t getAverage()
  */
 void mode_0(uint16_t value)
 {
-  // Difference between the average value and center position
-  // of the op-amp signal. ADC computes in 12bit(4096), so
-  // center position hava a value of 4095/2 ~= 2047
-  uint16_t tempValue = abs(2047 - value);
+	// Difference between the average value and center position
+	// of the op-amp signal. ADC computes in 12bit(4096), so
+	// center position have a value of 4095/2 ~= 2047
+	uint16_t tempValue = abs(2047 - value);
 
-  if(tempValue<300) {
-	  tempValue = 0;
-  }
+	if(tempValue<300) {
+		tempValue = 0;
+	}
 
-  // Uncomment to set equivalent brightness from value
-  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-  uint8_t brightness = getRawBrightness();
+	// Uncomment to set equivalent brightness from value
+	// uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+	uint8_t brightness = getRawBrightness();
 
-  // LED position that corresponds to the value
-  uint8_t position = abs((tempValue * LED_COUNT) / max_value);
+	// LED position that corresponds to the value
+	uint8_t position = abs((tempValue * LED_COUNT) / max_value);
 
-  // Check difference from last value to change the Hue
-  int diff = value - getAverage();
-  if (diff > 1)
-  {
-    if (globalHue < 235)
-    {
-      globalHue += 2;
-    }
-  }
-  else if (diff < -1)
-  {
-    if (globalHue > 3)
-    {
-      globalHue -= 2;
-    }
-  }
-  addLastValue(value);
+	// Check difference from last value to change the Hue
+	int diff = tempValue - getAverage();
+	if (diff > DIFFERENCE_GAMMA)
+	{
+		globalHue += HUE_INCREMENT;
+	}
 
-  // Apply LED values and display data
-  for (uint8_t i = 0; i < LED_COUNT; i++)
-  {
-    if (i < position)
-    {
-      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
-    }
-    else
-    {
-      ws2812_setLEDfade(i, 1.2);
-    }
-  }
-  ws2812_update();
+	addLastValue(tempValue);
+
+	// Apply LED values and display data
+	for (uint8_t i = 0; i < LED_COUNT; i++)
+	{
+		if (i < position)
+		{
+			ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
+		}
+		else
+		{
+			ws2812_setLEDfade(i, 1.2);
+		}
+	}
+	ws2812_update();
 }
 
+/**
+ * Mode 1 - Double Half Ring
+ */
 
 void mode_1(uint16_t value) {
 	// Difference between the average value and center position
-	  // of the op-amp signal. ADC computes in 12bit(4096), so
-	  // center position hava a value of 4095/2 ~= 2047
-	  uint16_t tempValue = abs(2047 - value);
+	// of the op-amp signal. ADC computes in 12bit(4096), so
+	// center position hava a value of 4095/2 ~= 2047
+	uint16_t tempValue = abs(2047 - value);
 
-	  if(tempValue<30) {
-		  tempValue = 0;
-	  }
+	if(tempValue<30) {
+		tempValue = 0;
+	}
 
-	  // Uncomment to set equivalent brightness from value
-	  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-	  uint8_t brightness = getRawBrightness();
+	// Uncomment to set equivalent brightness from value
+	// uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+	uint8_t brightness = getRawBrightness();
 
-	  // LED position that corresponds to the value
-	  uint8_t position = abs((tempValue * (LED_COUNT/2)) / max_value);
+	// LED position that corresponds to the value
+	uint8_t position = abs((tempValue * (LED_COUNT/2)) / max_value);
 
-	  // Check difference from last value to change the Hue
-	  int diff = value - getAverage();
-	  if (diff > 1)
-	  {
-	    if (globalHue < 235)
-	    {
-	      globalHue += 2;
-	    }
-	  }
-	  else if (diff < -1)
-	  {
-	    if (globalHue > 3)
-	    {
-	      globalHue -= 2;
-	    }
-	  }
-	  addLastValue(value);
+	// Check difference from last value to change the Hue
+	int diff = tempValue - getAverage();
+	if (diff > DIFFERENCE_GAMMA)
+	{
+		globalHue += HUE_INCREMENT;
+	}
 
-	  // Apply LED values and display data
-	  for (uint8_t i = 0; i < (LED_COUNT/2); i++)
-	  {
-	    if (i < position)
-	    {
-	      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
-	    }
-	    else
-	    {
-	      ws2812_setLEDfade(i, 1.2);
-	    }
-	  }
+	addLastValue(tempValue);
 
-	  // Mirror
-	  ws2812_mirrorHalf();
+	// Apply LED values and display data
+	for (uint8_t i = 0; i < (LED_COUNT/2); i++)
+	{
+		if (i < position)
+		{
+			ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 1, 1.2);
+		}
+		else
+		{
+			ws2812_setLEDfade(i, 1.2);
+		}
+	}
 
-	  ws2812_update();
+	// Mirror
+	ws2812_mirrorHalf();
+
+	ws2812_update();
 }
+
 /**
- * Mode 1 - Half ring centered and mirrored
+ * Mode 2 - Half ring centered and mirrored
  */
+
 void mode_2(uint16_t value)
 {
-  uint16_t tempValue = abs(2047 - value);
-  // Uncomment to set equivalent brightness from value
-  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-  uint8_t brightness = getRawBrightness();
-  uint8_t position = abs((tempValue * 4) / max_value);
+	uint16_t tempValue = abs(2047 - value);
 
-  int diff = value - getAverage();
-  if (diff > 1)
-  {
-    if (globalHue < 235)
-    {
-      globalHue += 2;
-    }
-  }
-  else if (diff < -1)
-  {
-    if (globalHue > 5)
-    {
-      globalHue -= 2;
-    }
-  }
-  addLastValue(value);
+	// Uncomment to set equivalent brightness from value
+	// uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+	uint8_t brightness = getRawBrightness();
 
-  for (uint8_t i = 0; i < 4; i++)
-  {
-    if (i < position)
-    {
-      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
-    }
-    else
-    {
-      ws2812_setLEDfade(i, 1.2);
-    }
-  }
+	uint8_t position = abs((tempValue * 4) / max_value);
 
-  // mirror
-  ws2812_mirrorFirstQuarter();
+	int diff = tempValue - getAverage();
+	if (diff > DIFFERENCE_GAMMA)
+	{
+		globalHue += HUE_INCREMENT;
+	}
 
-  ws2812_update();
+	addLastValue(tempValue);
+
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		if (i < position)
+		{
+			ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 1, 1.2);
+		}
+		else
+		{
+			ws2812_setLEDfade(i, 1.2);
+		}
+	}
+
+	// mirror
+	ws2812_mirrorFirstQuarter();
+
+	ws2812_update();
 }
 
 /**
- * Mode 2 - Same as Mode 1, but with rotation
+ * Mode 3 - Mode 2 with rotation
  */
 void mode_3(uint16_t value)
 {
-  uint16_t tempValue = abs(2047 - value);
-  // Uncomment to set equivalent brightness from value
-  // uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
-  uint8_t brightness = getRawBrightness();
-  uint8_t position = abs((tempValue * 4) / max_value);
+	uint16_t tempValue = abs(2047 - value);
 
-  int diff = value - getAverage();
-  if (diff > 1)
-  {
-    if (globalHue < 235)
-    {
-      globalHue += 2;
-    }
-  }
-  else if (diff < -1)
-  {
-    if (globalHue > 5)
-    {
-      globalHue -= 2;
-    }
-  }
-  addLastValue(value);
+	// Uncomment to set equivalent brightness from value
+	// uint8_t brightness = floor(tempValue * MAX_BRIGHTNESS) / max_value;
+	uint8_t brightness = getRawBrightness();
 
-  for (uint8_t i = 0; i < 4; i++)
-  {
-    if (i < position)
-    {
-      ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
-    }
-    else
-    {
-      ws2812_setLEDfade(i, 1.2);
-    }
-  }
+	uint8_t position = abs((tempValue * 4) / max_value);
 
-  // mirror
-  ws2812_mirrorFirstQuarter();
+	int diff = tempValue - getAverage();
+	if (diff > DIFFERENCE_GAMMA)
+	{
+		globalHue += HUE_INCREMENT;
+	}
 
-  if (rotation_count == rotation_delay)
-  {
-    rotation_count = 0;
-    rotation_step++;
-    if (rotation_step >= LED_COUNT)
-    {
-      rotation_step = 0;
-    }
-  }
-  rotation_count++;
+	addLastValue(tempValue);
 
-  ws2812_shift(rotation_step);
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		if (i < position)
+		{
+			ws2812_setLEDhue(i, globalHue + hueOffset + (i * 2), 255, brightness, 0, 1.2);
+		}
+		else
+		{
+			ws2812_setLEDfade(i, 1.2);
+		}
+	}
+
+	// mirror
+	ws2812_mirrorFirstQuarter();
+
+	if (rotation_count == rotation_delay)
+	{
+		rotation_count = 0;
+		rotation_step++;
+		if (rotation_step >= LED_COUNT)
+		{
+			rotation_step = 0;
+		}
+	}
+	rotation_count++;
+
+	ws2812_shift(rotation_step);
 }
 
 /**
- * Mode 3 - Spectrum representation
+ * Mode 4 - Spectrum Analyzer. FFT
  */
-void mode_4_old()
-{
-  fix_fft(Samples, Imag, Log2Len, 0);
-
-#ifdef DISPLAY_ON
-  SSD1306_Fill(0);
-
-  // Marks
-  uint8_t divisions = 4;
-  uint8_t pos;
-  for (uint8_t j = 0; j <= divisions; j++)
-  {
-    pos = (DISPLAY_WIDTH / divisions) * j;
-    SSD1306_DrawLine(pos, 0, pos, 2, 1);
-  }
-
-  uint8_t bar_width = DISPLAY_WIDTH / (Len / 2);
-#endif
-
-  for (uint16_t i = 0; i <= (Len/2); i++)
-  {
-//	  SSD1306_DrawFilledRectangle(0, 0, i+1, 50, 1);
-//	    SSD1306_UpdateScreen();
-    Mag[i] = isqrt(Samples[i] * Samples[i] + Imag[i] * Imag[i]);
-
-#ifdef DISPLAY_ON
-    // Adjust values
-    if (Mag[i] > (DISPLAY_HEIGHT - 1))
-    {
-      Mag[i] = (DISPLAY_HEIGHT - 3);
-    }
-#endif
-
-    // Discard first value
-    if (i > 0)
-    {
-
-      uint8_t barsPerLed = (uint8_t)floor((Len / 2) / LED_COUNT);
-      uint8_t ledPosition = (uint8_t)floor(i / barsPerLed);
-
-//      uint16_t maxValue = Mag[0]; // reducimos el valor max de magnitud, que es el que usamos para calcular el brillo del resto de leds
-//      uint8_t brightness = (uint8_t)floor((Mag[i] * MAX_BRIGHTNESS) / maxValue);
-      uint8_t brightness = (uint8_t)floor((Mag[i] * MAX_BRIGHTNESS) / 1000); // Valor a ojo en vez de maxValue.
-
-      if(brightness<30) {
-        brightness = 0;
-      }
-
-
-      // Si el brillo es menor que 1/6 del max, lo dejamos a 0
-//      uint8_t adjustedBrightness = (brightness < (uint8_t)(maxValue / 8)) ? 0 : brightness;
-      uint8_t adjustedBrightness = brightness;
-
-
-      if (adjustedBrightness > 0)
-      {
-//         ws2812_setLEDcolor(i-1, 0, 0, adjustedBrightness);
-        ws2812_setLEDhue(ledPosition, ledPosition*(256/LED_COUNT), 255, adjustedBrightness, 1, 1.1);
-      }
-      else
-      {
-        ws2812_setLEDfade(ledPosition, 1.1);
-      }
-#ifdef DISPLAY_ON
-
-      if ((Len / 2) < DISPLAY_WIDTH)
-      {
-
-        SSD1306_DrawFilledRectangle(((i - 1) * bar_width), DISPLAY_HEIGHT - 1 - Mag[i], bar_width, Mag[i], 1);
-      }
-      else
-      {
-        /*
-        uint16_t maxValue = Mag[0] >> 3; // reducimos el valor max de magnitud, que es el que usamos para calcular el brillo del resto de leds
-        uint8_t brightness = floor(Mag[i] * MAX_BRIGHTNESS) / maxValue;
-        // uint8_t adjustedBrightness = (brightness < 50) ? 0 : brightness;
-
-        // Si el brillo es menor que 1/6 del max, lo dejamos a 0
-        uint8_t adjustedBrightness = (brightness < (uint8_t)(maxValue / 8)) ? 0 : brightness;
-
-        if (adjustedBrightness > 0)
-        {
-          // ws2812_setLEDcolor(i-1, 0, 0, brightness);
-          ws2812_setLEDhue(i-1, 128 -  (uint8_t)(adjustedBrightness / 3), 255, adjustedBrightness);
-        }
-        else
-        {
-          ws2812_setLEDfade(i-1, 1.2);
-        }
-
-        uint8_t bar_width = 128 / 12;
-        SSD1306_DrawFilledRectangle(((i - 1) * bar_width), 64 - 1 - (Mag[i] >> 2), bar_width, Mag[i] >> 2, 1);
-        */
-//        SSD1306_DrawLine(i, (DISPLAY_HEIGHT - 1), i, (DISPLAY_HEIGHT - 1) - Mag[i], 1);
-      }
-#endif
-    }
-  }
-  ws2812_update();
-
-#ifdef DISPLAY_ON
-  SSD1306_UpdateScreen();
-#endif
-
-
-// if (rotation_count == rotation_delay)
-//   {
-//     rotation_count = 0;
-//     rotation_step++;
-//     if (rotation_step >= LED_COUNT)
-//     {
-//       rotation_step = 0;
-//     }
-//   }
-//   rotation_count++;
-
-//   ws2812_shift(rotation_step);
-}
 
 void mode_4() {
+
 	fix_fft(Samples, Imag, Log2Len, 0);
 
 	for (uint16_t i = 0; i <= (Len/2); i++){
@@ -1033,17 +871,11 @@ void mode_4() {
 	for (uint8_t led = 0; led < LED_COUNT; led++) {
 		uint16_t max = 0;
 		for (uint8_t pos = led*barsPerLed; pos < (led*barsPerLed) + barsPerLed; pos++) {
-//			if(pos != 0) {
 				max = (Mag[pos+1] > max) ? Mag[pos+1] : max;
-//			}
 		}
-//		if(led == 0) {
-//			average = average / (barsPerLed - 1);
-//		} else {
-//			average = average / barsPerLed;
-//		}
 
-		uint8_t brightness = (uint8_t)floor((max * rawBrightness) / 220); // Valor a ojo en vez de maxValue.
+
+		uint8_t brightness = (uint8_t)floor((max * rawBrightness) / 150); // 150 is the sensitivity. The lower the higher.
 
 		if(brightness<floor(rawBrightness/3)) {
 			brightness = 0;
@@ -1072,20 +904,20 @@ void mode_4() {
  */
 uint16_t isqrt(uint32_t x)
 {
-  uint16_t res = 0;
-  uint16_t add = 0x8000;
-  int i;
-  for (i = 0; i < 16; i++)
-  {
-    uint16_t temp = res | add;
-    uint32_t g2 = temp * temp;
-    if (x >= g2)
-    {
-      res = temp;
-    }
-    add >>= 1;
-  }
-  return res;
+	uint16_t res = 0;
+	uint16_t add = 0x8000;
+	int i;
+	for (i = 0; i < 16; i++)
+	{
+		uint16_t temp = res | add;
+		uint32_t g2 = temp * temp;
+		if (x >= g2)
+		{
+			res = temp;
+		}
+		add >>= 1;
+	}
+	return res;
 }
 
 /**
@@ -1093,15 +925,15 @@ uint16_t isqrt(uint32_t x)
  */
 void brightnessSetup(void)
 {
-  ws2812_fillBlack();
-  uint8_t rawBrightness = getRawBrightness();
-  for (uint8_t i = 0; i < brightness; i++)
-  {
+	ws2812_fillBlack();
+	uint8_t rawBrightness = getRawBrightness();
+	for (uint8_t i = 0; i < brightness; i++)
+	{
 
-    ws2812_setLEDcolor(i, rawBrightness, rawBrightness, rawBrightness);
+		ws2812_setLEDcolor(i, rawBrightness, rawBrightness, rawBrightness);
 
-  }
-  ws2812_update();
+	}
+	ws2812_update();
 }
 
 /**
@@ -1110,9 +942,10 @@ void brightnessSetup(void)
  */
 uint8_t getRawBrightness(void)
 {
-  uint8_t raw = round((brightness * MAX_BRIGHTNESS) / 12);
-  return raw;
+	uint8_t raw = round((brightness * MAX_BRIGHTNESS) / 12);
+	return raw;
 }
+
 /* USER CODE END 4 */
 
 /**
