@@ -3,3 +3,7 @@ src/.stmignore
 src/.vscode/
 src/STM32Make.make
 src/build/
+
+src/Debug/
+src/Release/
+src/SoundRing_fft\ Debug.launch
