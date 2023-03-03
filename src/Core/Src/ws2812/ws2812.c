@@ -2,6 +2,8 @@
 
 #include "math.h"
 
+TIM_HandleTypeDef *ws_timer;
+
 void ws2812_fillBlack(void)
 {
 	for (uint8_t i = 0; i < LED_COUNT; i++)

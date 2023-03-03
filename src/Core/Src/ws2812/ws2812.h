@@ -1,3 +1,6 @@
+#ifndef WS2812_H
+#define WS2812_H
+
 #include "stm32f0xx_hal.h"
 
 typedef struct RGB {
@@ -29,7 +32,7 @@ typedef struct RGB {
 
 volatile static uint8_t LEDbuffer[LED_BUFFER_SIZE] = {0};
 volatile static RGB LEDdata[LED_COUNT] = {0};
-TIM_HandleTypeDef *ws_timer;
+
 
 void ws2812_fillBlack(void);
 void ws2812_fillBufferBlack(void);
@@ -44,3 +47,6 @@ void ws2812_init(TIM_HandleTypeDef *timer);
 void ws2812_shift(uint8_t steps);
 void ws2812_mirrorFirstQuarter();
 void ws2812_mirrorHalf();
+
+
+#endif // WS2812_H
